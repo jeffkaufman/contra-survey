@@ -1,9 +1,13 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/Caskroom/miniconda/base/bin/python3
 
 import os
 import json
-import urllib.parse
 import requests
+import numpy as np
+import urllib.parse
+import matplotlib.pyplot as plt
+from collections import defaultdict
+from mpl_toolkits.basemap import Basemap
 
 KEY="AIzaSyCuMCzvNjdpzYJMFR8BWmbGzO68HbHPkGA"
 
@@ -38,6 +42,8 @@ def lookup_ll(loc):
 
   locations[loc] = pos
   return pos
+
+data = defaultdict(lambda: defaultdict(list)) # type -> value -> [lat, lng]
 
 try:
     with open("sheet-raw.tsv") as inf:
@@ -98,6 +104,8 @@ try:
             else:
                 prm = "Other"
 
+            data["prm"][prm].append(pos)
+
             if rlt == "Pass through across the set":
                 rlt = "No hands"
             elif rlt == "With your right hand, pull by across the set":
@@ -105,6 +113,8 @@ try:
             else:
                 rlt = "Other"
 
+            data["rlt"][rlt].append(pos)
+                
             if star in [
                     "Greenfield, hold the wrist. Louisville, hold "
                     "hands across.",
@@ -141,6 +151,8 @@ try:
             else:
                 star = "Other"
 
+            data["star"][star].append(pos)
+                
             if ct in [
                     "About 50/50 - strong focus on consent",
                     "More experienced dancers do about half the time or more",
@@ -203,6 +215,8 @@ try:
             ]:
                 ct = "Other"
 
+            data["ct"][ct].append(pos)
+
             if pt not in [
                     "Never, or almost never",
                     "Always, or almost always",
@@ -211,6 +225,8 @@ try:
             ]:
                 pt = "Other"
                 
+            data["pt"][pt].append(pos)
+
             if fn in [
                     "A select few always do, most do not (knees)",
 
@@ -259,6 +275,54 @@ try:
             ]:
                 fn = "Other"
 
+            data["fn"][fn].append(pos)
+                
 finally:
     with open("locations.json", "w") as outf:
         json.dump(locations, outf)
+
+for figure in data:
+    if figure not in ["star", "rlt", "prm"]:
+        continue
+    
+    plt.figure(figsize=(12,6))
+    m = Basemap(projection='cyl',
+                #llcrnrlat=min(lat for (lat, lng) in locations.values()),
+                #urcrnrlat=max(lat for (lat, lng) in locations.values()),
+                #llcrnrlon=min(lng for (lat, lng) in locations.values()),
+                #urcrnrlon=max(lng for (lat, lng) in locations.values()),
+                
+                llcrnrlat=24.521208,
+                urcrnrlat=49.382808,
+                llcrnrlon=-124.736342,
+                urcrnrlon=-66.885444,
+                
+                resolution='c')
+    m.drawcoastlines()
+    m.drawcountries()
+    m.drawstates()
+
+    markers = ["o", "p", "s"]
+    for option in sorted(data[figure]):
+        if option == "Other":
+            continue
+
+        # jitter to prevent overlaps
+        offset = len(markers) * 0.1
+        
+        lats = [lat + offset for (lat, lng) in data[figure][option]]
+        lngs = [lng + offset for (lat, lng) in data[figure][option]]
+        m.scatter(lngs, lats, zorder=5, label=option, marker=markers.pop())
+
+    plt.legend(loc="lower right")
+    plt.tight_layout()
+
+    full_figure = {
+        "star": "Star Hand Position",
+        "rlt": "Right and Left Through Hands",
+        "prm": "Promenade Hand Position",
+    }[figure]
+    
+    plt.title("2023: %s" % full_figure)
+    plt.savefig("dances-%s-big.png" % figure, dpi=180)
+    plt.clf()
