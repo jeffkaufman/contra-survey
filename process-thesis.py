@@ -134,5 +134,5 @@ for figure in data:
     }[figure]
     
     plt.title("2008: %s" % full_figure)
-    plt.savefig("dances-thesis-%s-big.png" % figure, dpi=180)
+    plt.savefig("contra-dialects-thesis-%s-big.png" % figure, dpi=180)
     plt.clf()

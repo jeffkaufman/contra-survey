@@ -6,7 +6,7 @@ import requests
 import numpy as np
 import urllib.parse
 import matplotlib.pyplot as plt
-from collections import defaultdict
+from collections import defaultdict, Counter
 from mpl_toolkits.basemap import Basemap
 
 KEY="AIzaSyCuMCzvNjdpzYJMFR8BWmbGzO68HbHPkGA"
@@ -309,10 +309,17 @@ for figure in data:
 
         # jitter to prevent overlaps
         offset = len(markers) * 0.1
+
+        c = Counter()
+        for pos in data[figure][option]:
+            c[tuple(pos)] += 1
         
-        lats = [lat + offset for (lat, lng) in data[figure][option]]
-        lngs = [lng + offset for (lat, lng) in data[figure][option]]
-        m.scatter(lngs, lats, zorder=5, label=option, marker=markers.pop())
+        lats = [lat + offset for (lat, lng) in sorted(c)]
+        lngs = [lng + offset for (lat, lng) in sorted(c)]
+        counts = [c[pos]*20 for pos in sorted(c)]
+        m.scatter(lngs, lats, zorder=1000-max(counts),
+                  label=option, marker=markers.pop(),
+                  sizes=counts)
 
     plt.legend(loc="lower right")
     plt.tight_layout()
@@ -324,5 +331,5 @@ for figure in data:
     }[figure]
     
     plt.title("2023: %s" % full_figure)
-    plt.savefig("dances-%s-big.png" % figure, dpi=180)
+    plt.savefig("contra-dialects-%s-big.png" % figure, dpi=180)
     plt.clf()
